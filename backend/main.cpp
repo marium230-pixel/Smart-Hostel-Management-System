@@ -1,7 +1,11 @@
 #include "httplib.h"
 #include "HostelSystem.h"
+
+#include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <string>
+
 #include <nlohmann/json.hpp>
 
 using namespace std;
@@ -10,6 +14,18 @@ using json = nlohmann::json;
 int main() {
     httplib::Server server;
     HostelSystem hostel;
+
+    // Render provides the port through the PORT environment variable.
+    // Locally, the backend continues to use port 8080.
+    int port = 8080;
+    if (const char* renderPort = std::getenv("PORT")) {
+        try {
+            port = std::stoi(renderPort);
+        } catch (const exception& e) {
+            cerr << "Invalid PORT environment variable: " << e.what() << endl;
+            return 1;
+        }
+    }
 
     auto cors = [](const httplib::Request&, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
@@ -35,7 +51,10 @@ int main() {
     };
 
     server.Get("/api/health", [&](const httplib::Request&, httplib::Response& res) {
-        sendJSON(res, {{"status", "working"}, {"message", "Smart Hostel Backend is connected!"}});
+        sendJSON(res, {
+            {"status", "working"},
+            {"message", "Smart Hostel Backend is connected!"}
+        });
     });
 
     server.Get("/api/dashboard", [&](const httplib::Request&, httplib::Response& res) {
@@ -46,29 +65,26 @@ int main() {
         sendJSON(res, hostel.getStudents());
     });
 
-
     server.Post("/api/students", [&](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             sendJSON(res, hostel.registerStudent(
-    body.at("id").get<int>(),
-    body.at("name").get<string>(),
-    body.at("department").get<string>()
-));
+                body.at("id").get<int>(),
+                body.at("name").get<string>(),
+                body.at("department").get<string>()
+            ));
         } catch (const exception& e) {
             res.status = 400;
             sendJSON(res, {{"error", e.what()}});
         }
     });
 
-        server.Post("/api/students/checkout", [&](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/students/checkout", [&](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
-
             sendJSON(res, hostel.checkoutStudent(
                 body.at("id").get<int>()
             ));
-
         } catch (const exception& e) {
             res.status = 400;
             sendJSON(res, {{"error", e.what()}});
@@ -95,9 +111,9 @@ int main() {
         try {
             json body = json::parse(req.body);
             sendJSON(res, hostel.addRuleViolation(
-    body.at("studentId").get<int>(),
-    body.at("ruleId").get<int>()
-));
+                body.at("studentId").get<int>(),
+                body.at("ruleId").get<int>()
+            ));
         } catch (const exception& e) {
             res.status = 400;
             sendJSON(res, {{"error", e.what()}});
@@ -116,9 +132,9 @@ int main() {
         try {
             json body = json::parse(req.body);
             sendJSON(res, hostel.addComplaint(
-    body.at("studentId").get<int>(),
-    body.at("description").get<string>()
-));
+                body.at("studentId").get<int>(),
+                body.at("description").get<string>()
+            ));
         } catch (const exception& e) {
             res.status = 400;
             sendJSON(res, {{"error", e.what()}});
@@ -127,7 +143,7 @@ int main() {
 
     server.Post("/api/complaints/resolve", [&](const httplib::Request& req, httplib::Response& res) {
         try {
-            json body = json::parse(req.body);
+            (void)json::parse(req.body);
             sendJSON(res, hostel.resolveComplaint());
         } catch (const exception& e) {
             res.status = 400;
@@ -144,23 +160,23 @@ int main() {
     });
 
     server.Get("/api/bst-tree", [&](const httplib::Request&, httplib::Response& res) {
-    sendJSON(res, hostel.getBSTTree());
-});
+        sendJSON(res, hostel.getBSTTree());
+    });
 
     server.Get("/api/path", [&](const httplib::Request& req, httplib::Response& res) {
         string source = req.get_param_value("source");
         string destination = req.get_param_value("destination");
-
         sendJSON(res, hostel.shortestPath(source, destination));
     });
 
     cout << "========================================" << endl;
     cout << "  SMART HOSTEL BACKEND SERVER" << endl;
     cout << "========================================" << endl;
-    cout << "Server running at http://localhost:8080" << endl;
-    cout << "Press Ctrl+C to stop the server." << endl;
+    cout << "Server listening on 0.0.0.0:" << port << endl;
 
-    if (!server.listen("127.0.0.1", 8080)) {
+    // Render requires the service to listen on 0.0.0.0 and its assigned PORT.
+    // This also works locally on port 8080 when PORT is not set.
+    if (!server.listen("0.0.0.0", port)) {
         cerr << "Server failed to start!" << endl;
         return 1;
     }
