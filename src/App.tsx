@@ -5,6 +5,7 @@ import {
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
 const heroImage = 'https://images.pexels.com/photos/31783935/pexels-photo-31783935.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/$/, '');
 
 type View = 'dashboard' | 'students' | 'rooms' | 'waiting' | 'rules' | 'fines' | 'complaints' | 'resolved' | 'activities' | 'path' | 'visualizer';
 type Status = 'Active' | 'Checked out';
@@ -48,7 +49,7 @@ const seedActivities: ActivityItem[] = [
 ];
 
 function useDemoState() {
-  const API = 'http://localhost:8080/api';
+  const API = API_BASE;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -409,7 +410,7 @@ function PathFinder() {
 
   try {
     const response = await fetch(
-      `http://localhost:8080/api/path?source=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`
+      `${API_BASE}/path?source=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`
     );
 
     if (!response.ok) {
@@ -465,7 +466,7 @@ function Visualizer({
   const [bstTree, setBstTree] = useState<BSTNodeData | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/bst-tree')
+    fetch(`${API_BASE}/bst-tree`)
       .then(response => {
         if (!response.ok) throw new Error('Failed to load BST');
         return response.json();
